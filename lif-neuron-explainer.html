@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaky Integrate-and-Fire Neuron — Visual Explainer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #060810; --surface: #0c0f1a; --card: #111525;
+  --border: #1e2a3a; --text: #e2e8f0; --muted: #64748b;
+  --cyan: #22d3ee; --violet: #a78bfa; --emerald: #34d399;
+  --amber: #fbbf24; --rose: #fb7185; --pink: #f472b6;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Space Grotesk', sans-serif; line-height: 1.7; overflow-x: hidden; }
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+.container { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
+h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+h1 span { color: var(--cyan); }
+.subtitle { color: var(--muted); font-size: 14px; margin-bottom: 48px; }
+h2 { font-size: 20px; font-weight: 600; margin: 48px 0 16px; color: var(--cyan); }
+h3 { font-size: 16px; font-weight: 500; margin: 32px 0 12px; color: var(--violet); }
+p { margin-bottom: 14px; font-size: 15px; }
+
+/* ──── BATHTUB SIMULATION ──── */
+.sim-wrapper {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px; margin: 32px 0;
+}
+.sim-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.sim-title { font-size: 16px; font-weight: 600; }
+.sim-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text); font-family: inherit;
+  font-size: 13px; cursor: pointer; transition: all 0.2s;
+}
+.btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn.active { background: rgba(34,211,238,0.1); border-color: var(--cyan); color: var(--cyan); }
+.btn.spike-btn { border-color: var(--amber); color: var(--amber); font-weight: 600; }
+.btn.spike-btn:hover { background: rgba(251,191,36,0.15); }
+
+.sim-layout { display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: start; }
+@media (max-width: 700px) { .sim-layout { grid-template-columns: 1fr; } }
+
+/* Bathtub visual */
+.tub-container { position: relative; width: 240px; height: 320px; margin: 0 auto; }
+.tub {
+  position: absolute; bottom: 0; left: 20px; right: 20px;
+  height: 240px; border: 3px solid var(--border);
+  border-top: none; border-radius: 0 0 16px 16px;
+  overflow: hidden; background: rgba(6,8,16,0.8);
+}
+.tub-water {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(to top, rgba(34,211,238,0.4), rgba(34,211,238,0.15));
+  transition: height 0.15s ease-out;
+  border-radius: 0 0 13px 13px;
+}
+.tub-water::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--cyan); box-shadow: 0 0 12px var(--cyan);
+}
+.threshold-line {
+  position: absolute; left: -8px; right: -8px;
+  border-top: 2px dashed var(--rose);
+  z-index: 2;
+}
+.threshold-label {
+  position: absolute; right: -70px; top: -8px;
+  font-size: 10px; color: var(--rose); white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Drain */
+.drain {
+  position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%);
+  width: 24px; height: 12px; background: var(--card);
+  border: 2px solid var(--border); border-top: none;
+  border-radius: 0 0 8px 8px;
+}
+.drain-drops { position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--cyan); opacity: 0.5; }
+
+/* Cup pouring */
+.cup-zone {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  width: 100px; text-align: center;
+}
+.cup { font-size: 24px; transition: transform 0.3s; }
+.cup.pouring { transform: rotate(-30deg) translateY(-4px); }
+
+/* Potential label */
+.potential-readout {
+  position: absolute; left: 50%; bottom: 50%;
+  transform: translate(-50%, 50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px; font-weight: 600; color: var(--cyan);
+  text-shadow: 0 0 20px rgba(34,211,238,0.4);
+  z-index: 3; pointer-events: none;
+}
+
+/* Spike flash */
+.spike-flash {
+  position: absolute; inset: -4px; border-radius: 0 0 16px 16px;
+  background: rgba(251,191,36,0.2); opacity: 0; pointer-events: none;
+  transition: opacity 0.1s;
+}
+.spike-flash.active { opacity: 1; }
+
+/* Chart area */
+.chart-area { position: relative; }
+.chart-canvas { width: 100%; height: 220px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
+.chart-legend { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+/* Sliders */
+.slider-group { margin: 20px 0; }
+.slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.slider-label { font-size: 12px; color: var(--muted); min-width: 120px; }
+.slider-val { font-family: 'JetBrains Mono'; font-size: 12px; color: var(--cyan); min-width: 40px; }
+input[type="range"] {
+  -webkit-appearance: none; flex: 1; height: 4px; border-radius: 2px;
+  background: var(--border); outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--cyan); cursor: pointer; border: 2px solid var(--bg);
+}
+
+/* ──── STEP BY STEP SECTION ──── */
+.step-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px; margin: 16px 0;
+  display: grid; grid-template-columns: 56px 1fr; gap: 16px; align-items: start;
+}
+.step-num {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono';
+}
+.step-content h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.step-content p { font-size: 13px; color: var(--muted); margin-bottom: 0; }
+
+/* Equation */
+.equation {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; margin: 20px 0;
+  text-align: center; font-family: 'JetBrains Mono'; font-size: 15px;
+}
+.eq-main { font-size: 18px; margin-bottom: 12px; color: var(--text); }
+.eq-desc { font-size: 11px; color: var(--muted); }
+.eq-highlight { color: var(--cyan); font-weight: 600; }
+.eq-rose { color: var(--rose); }
+.eq-amber { color: var(--amber); }
+.eq-emerald { color: var(--emerald); }
+
+/* Fraud connection */
+.fraud-card {
+  background: linear-gradient(135deg, rgba(244,114,182,0.05), rgba(34,211,238,0.05));
+  border: 1px solid rgba(244,114,182,0.2);
+  border-radius: 10px; padding: 24px; margin: 24px 0;
+}
+.fraud-card h4 { color: var(--pink); font-size: 15px; margin-bottom: 10px; }
+.fraud-card p { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+
+/* Event log */
+.event-log {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 16px; margin-top: 16px;
+  max-height: 120px; overflow-y: auto; font-size: 11px;
+  font-family: 'JetBrains Mono'; color: var(--muted);
+}
+.event-log div { padding: 2px 0; border-bottom: 1px solid rgba(30,42,58,0.5); }
+.event-log .spike-event { color: var(--amber); }
+.event-log .fire-event { color: var(--rose); font-weight: 600; }
+.event-log .leak-event { color: var(--cyan); opacity: 0.6; }
+
+/* STDP Section */
+.stdp-visual {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px; margin: 32px 0;
+}
+.stdp-canvas { width: 100%; height: 280px; background: var(--card); border-radius: 8px; border: 1px solid var(--border); }
+.neuron-pair {
+  display: flex; align-items: center; justify-content: center;
+  gap: 80px; margin: 24px 0; position: relative;
+}
+.neuron-circle {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 20px; border: 3px solid;
+  position: relative; transition: box-shadow 0.3s;
+}
+.neuron-a { border-color: var(--cyan); color: var(--cyan); background: rgba(34,211,238,0.08); }
+.neuron-b { border-color: var(--violet); color: var(--violet); background: rgba(167,139,250,0.08); }
+.neuron-circle.firing { box-shadow: 0 0 24px currentColor; }
+.synapse-arrow {
+  position: absolute; top: 50%; left: calc(50% - 30px);
+  width: 60px; height: 4px; transform: translateY(-50%);
+  border-radius: 2px; transition: all 0.5s;
+}
+.synapse-label {
+  position: absolute; top: calc(50% + 20px); left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-family: 'JetBrains Mono'; transition: color 0.3s;
+}
+.stdp-controls { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.btn-fire-a { border-color: var(--cyan); color: var(--cyan); }
+.btn-fire-a:hover { background: rgba(34,211,238,0.1); }
+.btn-fire-b { border-color: var(--violet); color: var(--violet); }
+.btn-fire-b:hover { background: rgba(167,139,250,0.1); }
+
+footer { text-align: center; padding: 60px 24px 40px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Understanding the <span>LIF Neuron</span></h1>
+<p class="subtitle">An interactive visual guide to the Leaky Integrate-and-Fire neuron and Spike-Timing-Dependent Plasticity</p>
+
+<!-- ════════════════ THE BATHTUB ANALOGY ════════════════ -->
+<h2>The Bathtub Analogy</h2>
+<p>Membrane potential is like the water level in a bathtub with a drain. Inputs pour water in, the drain leaks it out, and when the water hits the overflow line — the neuron fires.</p>
+
+<div class="sim-wrapper">
+  <div class="sim-header">
+    <div class="sim-title">Interactive LIF Neuron</div>
+    <div class="sim-controls">
+      <button class="btn spike-btn" id="spikeBtn" title="Press SPACE or click">Add Input Spike ⚡</button>
+      <button class="btn" id="burstBtn">Burst (×5)</button>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div class="sim-layout">
+    <div>
+      <div class="tub-container">
+        <div class="cup-zone"><div class="cup" id="cup">🪣</div></div>
+        <div class="tub" id="tub">
+          <div class="tub-water" id="water" style="height: 0%"></div>
+          <div class="threshold-line" id="threshLine" style="bottom: 70%">
+            <span class="threshold-label">threshold</span>
+          </div>
+          <div class="spike-flash" id="flash"></div>
+          <div class="potential-readout" id="readout">0.00</div>
+        </div>
+        <div class="drain">
+          <div class="drain-drops" id="drainDrops">💧</div>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-row">
+          <span class="slider-label">Decay β</span>
+          <input type="range" id="betaSlider" min="0.1" max="0.99" step="0.01" value="0.85">
+          <span class="slider-val" id="betaVal">0.85</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Threshold</span>
+          <input type="range" id="threshSlider" min="0.3" max="1.0" step="0.05" value="0.70">
+          <span class="slider-val" id="threshVal">0.70</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">Input strength</span>
+          <input type="range" id="inputSlider" min="0.05" max="0.5" step="0.01" value="0.20">
+          <span class="slider-val" id="inputVal">0.20</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-area">
+      <canvas class="chart-canvas" id="potentialChart"></canvas>
+      <div class="chart-legend">
+        <span><span class="legend-dot" style="background:var(--cyan)"></span> Membrane potential</span>
+        <span><span class="legend-dot" style="background:var(--rose)"></span> Threshold</span>
+        <span><span class="legend-dot" style="background:var(--amber)"></span> Spike fired</span>
+      </div>
+      <div class="event-log" id="eventLog">
+        <div style="color:var(--muted); opacity:0.5;">Press SPACE or click "Add Input Spike" to begin...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ HOW IT WORKS STEP BY STEP ════════════════ -->
+<h2>Three Things Happening Every Timestep</h2>
+
+<div class="step-card">
+  <div class="step-num" style="background:rgba(34,211,238,0.1); color:var(--cyan);">1</div>
+  <div class="step-content">
+    <h4>Leak — the drain pulls water out</h4>
+    <p>Every timestep, the membrane potential is multiplied by β. If β = 0.85, the neuron retains 85% of its charge and loses 15%. This is why it's called "leaky" — without new input, the potential always decays toward zero. A high β (0.95) means long memory. A low β (0.5) means the neuron forgets fast.</p>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num" style="background:rgba(251,191,36,0.1); color:var(--amber);">2</div>
+  <div class="step-content">
+    <h4>Integrate — inputs pour water in</h4>
+    <p>After the leak, incoming signals (weighted inputs from other neurons) are added to the membrane potential. Multiple inputs arriving close together accumulate — their water piles up faster than the drain can remove it. This is temporal integration.</p>
+  </div>
+</div>
+
+<div class="step-card">
+  <div class="step-num" style="background:rgba(251,113,133,0.1); color:var(--rose);">3</div>
+  <div class="step-content">
+    <h4>Fire — water hits the overflow line</h4>
+    <p>If the membrane potential crosses the threshold, the neuron emits a spike — a brief electrical pulse sent to all downstream neurons. Then the potential resets to zero. This "all-or-nothing" firing is what makes spiking neural networks fundamentally different from traditional neural networks, where every neuron outputs a continuous value every time.</p>
+  </div>
+</div>
+
+<div class="equation">
+  <div class="eq-main">
+    <span class="eq-highlight">V[t]</span> = <span class="eq-emerald">β</span> · <span class="eq-highlight">V[t-1]</span> + <span class="eq-amber">I[t]</span>
+  </div>
+  <div class="eq-desc">
+    <span class="eq-highlight">V[t]</span> = membrane potential now &nbsp;|&nbsp;
+    <span class="eq-emerald">β</span> = decay rate (leak) &nbsp;|&nbsp;
+    <span class="eq-highlight">V[t-1]</span> = potential last step &nbsp;|&nbsp;
+    <span class="eq-amber">I[t]</span> = input current
+  </div>
+  <div class="eq-desc" style="margin-top: 8px;">
+    If <span class="eq-highlight">V[t]</span> ≥ <span class="eq-rose">threshold</span> → <span class="eq-rose">FIRE spike</span>, then <span class="eq-highlight">V[t]</span> = 0
+  </div>
+</div>
+
+<!-- ════════════════ WHY TIME MATTERS ════════════════ -->
+<h2>Why Time Matters</h2>
+<p>Try this in the simulator above: send two spikes close together (press SPACE quickly twice). The second spike builds on what's left from the first — the membrane potential climbs higher. Now wait 5 seconds and send two more spikes with a long gap between them. The first one leaks away before the second arrives — no accumulation.</p>
+<p>This is the core insight: <strong>a LIF neuron is a temporal coincidence detector.</strong> It responds strongly when inputs are correlated in time and weakly when they're spread out. Traditional neural networks have no concept of this — they see all inputs simultaneously.</p>
+
+<!-- ════════════════ FRAUD CONNECTION ════════════════ -->
+<h2>Connecting to 3-Way Matching</h2>
+
+<div class="fraud-card">
+  <h4>Gradual Inflation Fraud</h4>
+  <p>A vendor slowly increases invoice amounts by 1-2% each month. Each invoice individually looks fine — it's within the 2% threshold. A rule-based system passes every single one.</p>
+  <p>But in the LIF neuron: each slightly-inflated invoice adds a small amount to the membrane potential on the "amount deviation" channel. With a high β (slow leak), this charge accumulates over weeks. Drip... drip... drip. Eventually the potential crosses threshold and the neuron fires — flagging a pattern that no individual check could catch.</p>
+  <p style="color: var(--pink); font-size: 14px; margin-top: 12px; margin-bottom: 0;"><strong>The membrane potential IS the memory.</strong> It's the neuron's running sense of "something isn't right here" — too subtle for a threshold check, too gradual for a human auditor, but the leaky integration catches it.</p>
+</div>
+
+<div class="fraud-card">
+  <h4>Phantom Vendor</h4>
+  <p>A new vendor appears with no transaction history and immediately submits invoices. In a normal vendor, the neuron has built a baseline — it knows the "rhythm." For this vendor, there IS no baseline.</p>
+  <p>Every single input lands on a neuron with no established decay pattern. The membrane potential spikes immediately because there's no learned normal to absorb it against. Maximum firing rate from day one.</p>
+</div>
+
+<div class="fraud-card">
+  <h4>Invoice Before Goods Receipt</h4>
+  <p>The temporal sequence should always be: PO spike → Receipt spike → Invoice spike. In the SNN, the channels are literally ordered in time. When an invoice spike arrives BEFORE the receipt spike, the temporal ordering of the spike train is reversed — the neuron processes the channels in the wrong sequence.</p>
+  <p>This isn't a rule someone wrote. The network learned the normal temporal pattern during training, and a reversed sequence produces a completely different membrane potential trajectory. The anomaly is detected natively by the physics of the computation.</p>
+</div>
+
+<!-- ════════════════ STDP SECTION ════════════════ -->
+<h2>Spike-Timing-Dependent Plasticity (STDP)</h2>
+<p>If the LIF neuron is how neurons compute, STDP is how they learn. The rule is simple: neurons that fire together, wire together — but the <em>order</em> matters.</p>
+
+<div class="stdp-visual">
+  <div class="sim-title" style="margin-bottom: 16px;">Interactive STDP Demo</div>
+  <p style="font-size: 13px; color: var(--muted); margin-bottom: 20px;">Fire neuron A and B in different orders. Watch how the synapse strength changes based on timing.</p>
+
+  <div class="neuron-pair">
+    <div class="neuron-circle neuron-a" id="neuronA">A</div>
+    <div class="synapse-arrow" id="synapse" style="background: var(--muted);"></div>
+    <div class="synapse-label" id="synapseLabel" style="color: var(--muted);">w = 0.50</div>
+    <div class="neuron-circle neuron-b" id="neuronB">B</div>
+  </div>
+
+  <canvas class="stdp-canvas" id="stdpChart"></canvas>
+
+  <div class="stdp-controls">
+    <button class="btn btn-fire-a" id="fireA">Fire A (pre-synaptic)</button>
+    <button class="btn btn-fire-b" id="fireB">Fire B (post-synaptic)</button>
+    <button class="btn" id="autoLTP">Demo: A→B (strengthen)</button>
+    <button class="btn" id="autoLTD">Demo: B→A (weaken)</button>
+    <button class="btn" id="resetSTDP">Reset</button>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px;">
+    <div style="background: var(--card); border: 1px solid rgba(52,211,153,0.2); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 13px; font-weight: 600; color: var(--emerald); margin-bottom: 6px;">A fires THEN B fires</div>
+      <div style="font-size: 12px; color: var(--muted);">A probably caused B to fire. Strengthen the A→B connection. This is <strong style="color:var(--emerald)">Long-Term Potentiation (LTP)</strong>.</div>
+    </div>
+    <div style="background: var(--card); border: 1px solid rgba(251,113,133,0.2); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 13px; font-weight: 600; color: var(--rose); margin-bottom: 6px;">B fires THEN A fires</div>
+      <div style="font-size: 12px; color: var(--muted);">A didn't contribute to B's firing. Weaken the connection — it's noise. This is <strong style="color:var(--rose)">Long-Term Depression (LTD)</strong>.</div>
+    </div>
+  </div>
+</div>
+
+<div class="equation">
+  <div class="eq-main">
+    A fires before B → <span class="eq-emerald">Δw = +η · e<sup>-Δt/τ</sup></span><br>
+    B fires before A → <span class="eq-rose">Δw = -η · e<sup>-Δt/τ</sup></span>
+  </div>
+  <div class="eq-desc">
+    <span class="eq-emerald">Δw</span> = weight change &nbsp;|&nbsp;
+    η = learning rate &nbsp;|&nbsp;
+    Δt = time between spikes &nbsp;|&nbsp;
+    τ = time constant
+  </div>
+  <div class="eq-desc" style="margin-top: 8px;">
+    Closer in time → bigger change &nbsp;|&nbsp; Far apart → almost no change
+  </div>
+</div>
+
+<h2>Putting It All Together</h2>
+<p>LIF neurons give the network <strong>temporal memory</strong> — the ability to accumulate evidence over time through the membrane potential. STDP gives the network <strong>temporal learning</strong> — the ability to discover which sequences of events matter by strengthening connections between neurons that fire in meaningful patterns.</p>
+<p>Together in your 3-way matching engine: the SNN learns the normal rhythm of PO → Receipt → Invoice for each vendor. The LIF neurons' membrane potentials track the ongoing "health" of each transaction stream. STDP reinforces the synaptic pathways that encode normal behavior. When fraud breaks the pattern, the membrane potential trajectory diverges from what the network has learned — and it fires.</p>
+
+</div>
+
+<footer>
+  Leaky Integrate-and-Fire Neuron Explainer — MakeMIT × Harvard 2026
+</footer>
+
+<script>
+// ════════════════ LIF SIMULATOR ════════════════
+const state = {
+  potential: 0, beta: 0.85, threshold: 0.70, inputStrength: 0.20,
+  history: [], spikes: [], time: 0, running: true, fireCount: 0,
+};
+const MAX_HISTORY = 300;
+
+// DOM
+const water = document.getElementById('water');
+const readout = document.getElementById('readout');
+const flash = document.getElementById('flash');
+const cup = document.getElementById('cup');
+const threshLine = document.getElementById('threshLine');
+const chartCanvas = document.getElementById('potentialChart');
+const chartCtx = chartCanvas.getContext('2d');
+const eventLog = document.getElementById('eventLog');
+const drainDrops = document.getElementById('drainDrops');
+let logStarted = false;
+
+function addLog(msg, cls) {
+  if (!logStarted) { eventLog.innerHTML = ''; logStarted = true; }
+  const d = document.createElement('div');
+  if (cls) d.className = cls;
+  d.textContent = `[t=${state.time}] ${msg}`;
+  eventLog.prepend(d);
+  if (eventLog.children.length > 30) eventLog.removeChild(eventLog.lastChild);
+}
+
+function addSpike() {
+  state.potential += state.inputStrength;
+  cup.classList.add('pouring');
+  setTimeout(() => cup.classList.remove('pouring'), 200);
+  addLog(`Input spike (+${state.inputStrength.toFixed(2)}) → V = ${state.potential.toFixed(3)}`, 'spike-event');
+}
+
+function tick() {
+  if (!state.running) return;
+  // Leak
+  const before = state.potential;
+  state.potential *= state.beta;
+  // Check threshold
+  let fired = false;
+  if (state.potential >= state.threshold) {
+    fired = true;
+    state.fireCount++;
+    addLog(`FIRE! V=${state.potential.toFixed(3)} ≥ ${state.threshold.toFixed(2)} → reset to 0`, 'fire-event');
+    state.potential = 0;
+    flash.classList.add('active');
+    setTimeout(() => flash.classList.remove('active'), 150);
+  }
+  // Record
+  state.history.push(state.potential);
+  state.spikes.push(fired);
+  if (state.history.length > MAX_HISTORY) { state.history.shift(); state.spikes.shift(); }
+  state.time++;
+  // Update visuals
+  const pct = Math.min(state.potential / 1.0, 1.0) * 100;
+  water.style.height = pct + '%';
+  readout.textContent = state.potential.toFixed(2);
+  // Drain animation
+  const leakAmt = before - state.potential;
+  drainDrops.style.opacity = Math.min(leakAmt * 5, 0.8);
+  drawChart();
+}
+
+function drawChart() {
+  const c = chartCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr;
+  c.height = c.clientHeight * dpr;
+  const ctx = chartCtx;
+  ctx.scale(dpr, dpr);
+  const w = c.clientWidth, h = c.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  const pad = { t: 10, b: 20, l: 40, r: 10 };
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  // Grid
+  ctx.strokeStyle = 'rgba(30,42,58,0.5)'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (ph / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText((1.0 - i * 0.25).toFixed(2), pad.l - 6, y + 3);
+  }
+  // Threshold line
+  const threshY = pad.t + ph * (1 - state.threshold);
+  ctx.strokeStyle = 'rgba(251,113,133,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, threshY); ctx.lineTo(w - pad.r, threshY); ctx.stroke();
+  ctx.setLineDash([]);
+  // Potential line
+  if (state.history.length > 1) {
+    ctx.beginPath(); ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2;
+    const step = pw / MAX_HISTORY;
+    for (let i = 0; i < state.history.length; i++) {
+      const x = pad.l + step * (MAX_HISTORY - state.history.length + i);
+      const y = pad.t + ph * (1 - Math.min(state.history[i], 1.0));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    // Glow
+    ctx.strokeStyle = 'rgba(34,211,238,0.15)'; ctx.lineWidth = 6;
+    ctx.beginPath();
+    for (let i = 0; i < state.history.length; i++) {
+      const x = pad.l + step * (MAX_HISTORY - state.history.length + i);
+      const y = pad.t + ph * (1 - Math.min(state.history[i], 1.0));
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  // Spike markers
+  const step = pw / MAX_HISTORY;
+  for (let i = 0; i < state.spikes.length; i++) {
+    if (state.spikes[i]) {
+      const x = pad.l + step * (MAX_HISTORY - state.spikes.length + i);
+      ctx.beginPath(); ctx.arc(x, pad.t + 6, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#fbbf24'; ctx.fill();
+      ctx.strokeStyle = 'rgba(251,191,36,0.3)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + ph); ctx.stroke();
+    }
+  }
+}
+
+// Controls
+document.getElementById('spikeBtn').addEventListener('click', addSpike);
+document.getElementById('burstBtn').addEventListener('click', () => {
+  for (let i = 0; i < 5; i++) setTimeout(addSpike, i * 60);
+});
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.potential = 0; state.history = []; state.spikes = []; state.time = 0; state.fireCount = 0;
+  logStarted = false;
+  eventLog.innerHTML = '<div style="color:var(--muted); opacity:0.5;">Press SPACE or click "Add Input Spike" to begin...</div>';
+  water.style.height = '0%'; readout.textContent = '0.00';
+});
+
+document.getElementById('betaSlider').addEventListener('input', e => {
+  state.beta = parseFloat(e.target.value);
+  document.getElementById('betaVal').textContent = state.beta.toFixed(2);
+});
+document.getElementById('threshSlider').addEventListener('input', e => {
+  state.threshold = parseFloat(e.target.value);
+  document.getElementById('threshVal').textContent = state.threshold.toFixed(2);
+  threshLine.style.bottom = (state.threshold * 100) + '%';
+});
+document.getElementById('inputSlider').addEventListener('input', e => {
+  state.inputStrength = parseFloat(e.target.value);
+  document.getElementById('inputVal').textContent = state.inputStrength.toFixed(2);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); addSpike(); }
+});
+
+// Tick loop
+setInterval(tick, 50); // 20 FPS
+
+// ════════════════ STDP SIMULATOR ════════════════
+const stdp = { weight: 0.50, lastA: null, lastB: null, history: [], time: 0, maxHist: 200 };
+
+const neuronAEl = document.getElementById('neuronA');
+const neuronBEl = document.getElementById('neuronB');
+const synapseEl = document.getElementById('synapse');
+const synapseLabel = document.getElementById('synapseLabel');
+const stdpCanvas = document.getElementById('stdpChart');
+const stdpCtx = stdpCanvas.getContext('2d');
+
+function updateSynapse() {
+  const w = Math.max(0, Math.min(1, stdp.weight));
+  stdp.weight = w;
+  synapseLabel.textContent = `w = ${w.toFixed(2)}`;
+  const thickness = 2 + w * 8;
+  if (w > 0.5) {
+    synapseEl.style.background = `var(--emerald)`;
+    synapseLabel.style.color = `var(--emerald)`;
+  } else if (w < 0.5) {
+    synapseEl.style.background = `var(--rose)`;
+    synapseLabel.style.color = `var(--rose)`;
+  } else {
+    synapseEl.style.background = `var(--muted)`;
+    synapseLabel.style.color = `var(--muted)`;
+  }
+  synapseEl.style.height = thickness + 'px';
+}
+
+function fireNeuron(which) {
+  const now = stdp.time;
+  const el = which === 'A' ? neuronAEl : neuronBEl;
+  el.classList.add('firing');
+  setTimeout(() => el.classList.remove('firing'), 400);
+
+  if (which === 'A') {
+    stdp.lastA = now;
+    if (stdp.lastB !== null) {
+      const dt = now - stdp.lastB; // A after B → LTD
+      const change = -0.03 * Math.exp(-dt / 20);
+      stdp.weight += change;
+      updateSynapse();
+    }
+  } else {
+    stdp.lastB = now;
+    if (stdp.lastA !== null) {
+      const dt = now - stdp.lastA; // B after A → LTP
+      const change = 0.03 * Math.exp(-dt / 20);
+      stdp.weight += change;
+      updateSynapse();
+    }
+  }
+}
+
+document.getElementById('fireA').addEventListener('click', () => fireNeuron('A'));
+document.getElementById('fireB').addEventListener('click', () => fireNeuron('B'));
+
+document.getElementById('autoLTP').addEventListener('click', () => {
+  // A then B with short delay — should strengthen
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => fireNeuron('A'), i * 600);
+    setTimeout(() => fireNeuron('B'), i * 600 + 100);
+  }
+});
+document.getElementById('autoLTD').addEventListener('click', () => {
+  // B then A — should weaken
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => fireNeuron('B'), i * 600);
+    setTimeout(() => fireNeuron('A'), i * 600 + 100);
+  }
+});
+document.getElementById('resetSTDP').addEventListener('click', () => {
+  stdp.weight = 0.50; stdp.lastA = null; stdp.lastB = null;
+  stdp.history = []; stdp.time = 0;
+  updateSynapse();
+});
+
+function stdpTick() {
+  stdp.time++;
+  stdp.history.push(stdp.weight);
+  if (stdp.history.length > stdp.maxHist) stdp.history.shift();
+  drawSTDPChart();
+}
+
+function drawSTDPChart() {
+  const c = stdpCanvas;
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr;
+  c.height = c.clientHeight * dpr;
+  const ctx = stdpCtx;
+  ctx.scale(dpr, dpr);
+  const w = c.clientWidth, h = c.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  const pad = { t: 10, b: 20, l: 50, r: 10 };
+  const pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+  // Grid
+  ctx.strokeStyle = 'rgba(30,42,58,0.5)'; ctx.lineWidth = 0.5;
+  ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono'; ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (ph / 4) * i;
+    const val = 1.0 - i * 0.25;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+    ctx.fillText(val.toFixed(2), pad.l - 6, y + 3);
+  }
+  // Baseline at 0.5
+  const baseY = pad.t + ph * 0.5;
+  ctx.strokeStyle = 'rgba(100,116,139,0.4)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(pad.l, baseY); ctx.lineTo(w - pad.r, baseY); ctx.stroke();
+  ctx.setLineDash([]);
+  // Weight line
+  if (stdp.history.length > 1) {
+    const step = pw / stdp.maxHist;
+    ctx.beginPath(); ctx.lineWidth = 2;
+    for (let i = 0; i < stdp.history.length; i++) {
+      const x = pad.l + step * (stdp.maxHist - stdp.history.length + i);
+      const y = pad.t + ph * (1 - stdp.history[i]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    const lastVal = stdp.history[stdp.history.length - 1];
+    ctx.strokeStyle = lastVal > 0.5 ? '#34d399' : lastVal < 0.5 ? '#fb7185' : '#64748b';
+    ctx.stroke();
+  }
+  // Labels
+  ctx.fillStyle = '#64748b'; ctx.font = '10px Space Grotesk'; ctx.textAlign = 'center';
+  ctx.fillText('Synapse Weight Over Time', w / 2, h - 2);
+}
+
+updateSynapse();
+setInterval(stdpTick, 50);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Evolution of 3-Way Matching — MakeMIT x Harvard 2026</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #060810;
+  --surface: #0c0f1a;
+  --card: #111525;
+  --border: #1e2a3a;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --cyan: #22d3ee;
+  --violet: #a78bfa;
+  --emerald: #34d399;
+  --amber: #fbbf24;
+  --rose: #fb7185;
+  --pink: #f472b6;
+  --sky: #38bdf8;
+  --orange: #fb923c;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ──── CANVAS BG ──── */
+#neural-bg {
+  position: fixed; inset: 0; z-index: 0; opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ──── LAYOUT ──── */
+.container { max-width: 900px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ──── HERO ──── */
+.hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  position: relative;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 100px;
+  border: 1px solid rgba(34,211,238,0.3); background: rgba(34,211,238,0.05);
+  color: var(--cyan); font-size: 12px; letter-spacing: 0.05em;
+  margin-bottom: 32px;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4rem); font-weight: 700;
+  line-height: 1.1; margin-bottom: 20px; letter-spacing: -0.02em;
+}
+.hero h1 span { color: var(--cyan); }
+.hero p {
+  font-size: 16px; color: var(--muted); max-width: 560px;
+  margin-bottom: 48px;
+}
+.hero-sub {
+  font-size: 13px; color: var(--muted); font-style: italic;
+  max-width: 500px; border-left: 2px solid var(--violet);
+  padding-left: 16px; text-align: left; margin-top: 20px;
+}
+
+.scroll-hint {
+  position: absolute; bottom: 40px;
+  font-size: 13px; color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+  animation: bounce 2s infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* ──── SECTIONS ──── */
+.era {
+  padding: 120px 0 80px;
+  opacity: 0; transform: translateY(40px);
+  transition: opacity 0.8s, transform 0.8s;
+}
+.era.visible { opacity: 1; transform: translateY(0); }
+
+.era-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.era-num {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 4px 10px; border-radius: 4px;
+}
+.era-year { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+.era h2 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 700;
+  margin-bottom: 6px; letter-spacing: -0.01em;
+}
+.era .tagline {
+  font-size: 15px; color: var(--muted); margin-bottom: 32px; max-width: 600px;
+}
+
+.era-content { margin-top: 24px; }
+
+/* ──── CARDS ──── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px; margin-bottom: 16px;
+}
+.card-title {
+  font-size: 12px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 10px;
+}
+
+/* ──── FLOW DIAGRAMS ──── */
+.flow {
+  display: flex; align-items: center; gap: 8px;
+  overflow-x: auto; padding: 16px 0;
+  flex-wrap: wrap; justify-content: center;
+}
+.flow-node {
+  padding: 10px 16px; border-radius: 6px;
+  font-size: 12px; font-weight: 500; text-align: center;
+  min-width: 80px; white-space: nowrap;
+  border: 1px solid;
+}
+.flow-arrow { color: var(--muted); font-size: 18px; flex-shrink: 0; }
+.flow-node { position: relative; transition: transform 0.3s, box-shadow 0.3s; cursor: default; }
+.flow-node:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+.flow-node .node-tooltip {
+  position: absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%) scale(0.9); opacity: 0;
+  background: #1a1f32; border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 12px; font-size: 11px;
+  color: var(--text); white-space: nowrap; pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 10;
+}
+.flow-node:hover .node-tooltip { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* ──── ERA PROGRESS BAR ──── */
+.era-progress {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 3px; background: rgba(6,8,16,0.8);
+  opacity: 0; transition: opacity 0.4s;
+}
+.era-progress.visible { opacity: 1; }
+.era-progress-fill {
+  height: 100%; width: 0%; transition: width 0.3s;
+  background: linear-gradient(90deg, var(--amber), var(--cyan), var(--violet), var(--emerald), var(--rose), var(--pink));
+}
+.era-nav {
+  position: fixed; top: 8px; right: 20px; z-index: 101;
+  display: flex; gap: 6px; opacity: 0; transition: opacity 0.4s;
+}
+.era-nav.visible { opacity: 1; }
+.era-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1px solid var(--border); background: transparent;
+  cursor: pointer; transition: all 0.3s;
+}
+.era-dot.active { transform: scale(1.4); }
+.era-dot:nth-child(1) { border-color: var(--amber); }
+.era-dot:nth-child(1).active { background: var(--amber); }
+.era-dot:nth-child(2) { border-color: var(--cyan); }
+.era-dot:nth-child(2).active { background: var(--cyan); }
+.era-dot:nth-child(3) { border-color: var(--violet); }
+.era-dot:nth-child(3).active { background: var(--violet); }
+.era-dot:nth-child(4) { border-color: var(--emerald); }
+.era-dot:nth-child(4).active { background: var(--emerald); }
+.era-dot:nth-child(5) { border-color: var(--rose); }
+.era-dot:nth-child(5).active { background: var(--rose); }
+.era-dot:nth-child(6) { border-color: var(--pink); }
+.era-dot:nth-child(6).active { background: var(--pink); }
+
+/* ──── ANIMATED DATA FLOW ──── */
+@keyframes dataFlow {
+  0% { left: -6px; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: calc(100% + 6px); opacity: 0; }
+}
+.flow-animated { position: relative; overflow: visible; }
+.flow-particle {
+  position: absolute; top: 50%; width: 6px; height: 6px;
+  border-radius: 50%; transform: translateY(-50%);
+  animation: dataFlow 2.5s linear infinite;
+  pointer-events: none;
+}
+
+/* ──── ANIMATED COUNTERS ──── */
+.metric-val[data-count] {
+  transition: color 0.3s;
+}
+
+/* ──── INTERACTIVE CODE BLOCKS ──── */
+.code-block { position: relative; }
+.code-copy {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 8px; font-size: 10px;
+  color: var(--muted); cursor: pointer; transition: all 0.2s;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.code-copy:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.code-copy.copied { color: var(--emerald); border-color: var(--emerald); }
+
+/* ──── 3-WAY MATCH VISUAL ──── */
+.match-visual {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px; margin: 32px 0; text-align: center;
+}
+.match-doc {
+  padding: 24px 16px; border-radius: 8px;
+  border: 2px solid; position: relative;
+}
+.match-doc .icon { font-size: 32px; margin-bottom: 8px; }
+.match-doc h3 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.match-doc p { font-size: 11px; color: var(--muted); }
+.match-lines {
+  position: relative; text-align: center; padding: 20px 0;
+  font-size: 13px; color: var(--cyan); font-weight: 500;
+}
+
+/* ──── ARCH DIAGRAMS ──── */
+.arch {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 24px; margin: 24px 0;
+}
+.arch-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted); margin-bottom: 16px;
+}
+
+/* ──── CODE BLOCKS ──── */
+.code-block {
+  background: #050508; border: 1px solid var(--border);
+  border-radius: 6px; padding: 16px; margin: 16px 0;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  overflow-x: auto; line-height: 1.8;
+  color: #94a3b8;
+}
+.code-block .kw { color: var(--violet); }
+.code-block .fn { color: var(--cyan); }
+.code-block .str { color: var(--emerald); }
+.code-block .cm { color: #475569; font-style: italic; }
+.code-block .num { color: var(--amber); }
+
+/* ──── COMPARISON TABLE ──── */
+.compare-table {
+  width: 100%; border-collapse: collapse; margin: 24px 0;
+  font-size: 13px;
+}
+.compare-table th {
+  text-align: left; padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted); font-size: 11px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.compare-table td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(30,42,58,0.5);
+}
+.compare-table tr:hover { background: rgba(34,211,238,0.03); }
+
+/* ──── THOUGHT BUBBLE ──── */
+.thought {
+  border-left: 3px solid var(--violet);
+  padding: 16px 20px; margin: 24px 0;
+  background: rgba(167,139,250,0.05);
+  border-radius: 0 8px 8px 0;
+  font-style: italic; color: #a5b4c8;
+  font-size: 14px;
+}
+.thought::before {
+  content: '💭';
+  display: block; font-style: normal; margin-bottom: 8px;
+}
+
+/* ──── TIMELINE CONNECTOR ──── */
+.timeline-line {
+  width: 2px; height: 60px; margin: 0 auto;
+  background: linear-gradient(to bottom, var(--border), transparent);
+}
+
+/* ──── COLORS BY ERA ──── */
+.era-rule .era-num { background: rgba(251,191,36,0.1); color: var(--amber); }
+.era-rule h2 { color: var(--amber); }
+
+.era-ml .era-num { background: rgba(34,211,238,0.1); color: var(--cyan); }
+.era-ml h2 { color: var(--cyan); }
+
+.era-llm .era-num { background: rgba(167,139,250,0.1); color: var(--violet); }
+.era-llm h2 { color: var(--violet); }
+
+.era-multi .era-num { background: rgba(52,211,153,0.1); color: var(--emerald); }
+.era-multi h2 { color: var(--emerald); }
+
+.era-reason .era-num { background: rgba(251,113,133,0.1); color: var(--rose); }
+.era-reason h2 { color: var(--rose); }
+
+.era-neuro .era-num { background: rgba(244,114,182,0.1); color: var(--pink); }
+.era-neuro h2 { color: var(--pink); }
+
+/* ──── GRID ──── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .match-visual { grid-template-columns: 1fr; }
+}
+
+/* ──── METRIC ──── */
+.metric {
+  padding: 16px; border-radius: 6px;
+  background: var(--surface); border: 1px solid var(--border);
+  text-align: center;
+}
+.metric-val { font-size: 24px; font-weight: 700; font-family: 'JetBrains Mono'; }
+.metric-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ──── INVALIDATION BANNER ──── */
+.invalidation {
+  text-align: center; padding: 32px 20px; margin: 40px 0;
+  border: 1px dashed var(--rose);
+  border-radius: 8px; background: rgba(251,113,133,0.03);
+}
+.invalidation .emoji { font-size: 28px; margin-bottom: 8px; }
+.invalidation h3 { font-size: 16px; color: var(--rose); margin-bottom: 6px; }
+.invalidation p { font-size: 13px; color: var(--muted); max-width: 500px; margin: 0 auto; }
+
+/* ──── FOOTER ──── */
+footer {
+  text-align: center; padding: 60px 24px 40px;
+  border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<div class="era-progress"><div class="era-progress-fill"></div></div>
+<div class="era-nav">
+  <div class="era-dot" data-era-idx="0" title="Rule-Based"></div>
+  <div class="era-dot" data-era-idx="1" title="Machine Learning"></div>
+  <div class="era-dot" data-era-idx="2" title="Text LLMs"></div>
+  <div class="era-dot" data-era-idx="3" title="Multimodal"></div>
+  <div class="era-dot" data-era-idx="4" title="Reasoning + Agents"></div>
+  <div class="era-dot" data-era-idx="5" title="Neuromorphic"></div>
+</div>
+
+<canvas id="neural-bg"></canvas>
+
+<div class="container">
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<section class="hero">
+  <div class="hero-badge">⚡ MakeMIT × Harvard 2026</div>
+  <h1>The Same Problem,<br><span>Six Architectures</span></h1>
+  <p>How the relentless pace of AI transformation forced me to redesign the same solution six times — and what's coming next.</p>
+
+  <div class="hero-sub">
+    "As I'm speaking here, in the background I'm thinking about Kimi K2's agent swarm pattern within the model — and my subagent design needs a retouch. Again."
+  </div>
+
+  <div class="scroll-hint">Scroll to begin ↓</div>
+</section>
+
+<!-- ════════════════════ WHAT IS 3-WAY MATCHING ════════════════════ -->
+<section class="era visible" style="opacity:1; transform:none;">
+  <div class="era-header">
+    <span class="era-num" style="background:rgba(34,211,238,0.1);color:var(--cyan);">Foundation</span>
+  </div>
+  <h2 style="color:var(--text);">What Is 3-Way Matching?</h2>
+  <p class="tagline">The backbone of every accounts payable department on Earth </p>
+
+  <div class="match-visual">
+    <div class="match-doc" style="border-color: var(--cyan); background: rgba(34,211,238,0.05);">
+      <div class="icon">📋</div>
+      <h3 style="color:var(--cyan)">Purchase Order</h3>
+      <p>"We want 500 units of X at $12 each"</p>
+      <p style="margin-top:8px;"><span class="mono" style="color:var(--cyan)">PO-2025-0847</span></p>
+      <p style="font-size:10px; color:var(--muted)">Created: Jan 15</p>
+      <p style="font-size:10px; color:var(--muted)">Amount: $6,000.00</p>
+    </div>
+    <div class="match-doc" style="border-color: var(--emerald); background: rgba(52,211,153,0.05);">
+      <div class="icon">📦</div>
+      <h3 style="color:var(--emerald)">Goods Receipt</h3>
+      <p>"Warehouse confirms 500 units received"</p>
+      <p style="margin-top:8px;"><span class="mono" style="color:var(--emerald)">GR-2025-0847</span></p>
+      <p style="font-size:10px; color:var(--muted)">Received: Jan 22</p>
+      <p style="font-size:10px; color:var(--muted)">Qty: 500 units</p>
+    </div>
+    <div class="match-doc" style="border-color: var(--amber); background: rgba(251,191,36,0.05);">
+      <div class="icon">🧾</div>
+      <h3 style="color:var(--amber)">Invoice</h3>
+      <p>"Vendor bills $6,120.00 for 500 units"</p>
+      <p style="margin-top:8px;"><span class="mono" style="color:var(--amber)">INV-2025-3291</span></p>
+      <p style="font-size:10px; color:var(--muted)">Submitted: Jan 25</p>
+      <p style="font-size:10px; color:var(--muted)">Amount: $6,120.00</p>
+    </div>
+  </div>
+
+  <div class="match-lines">
+    PO amount ($6,000) ≠ Invoice amount ($6,120) → <span style="color:var(--rose)">⚠ Flag for review</span><br>
+    <span style="font-size:12px; color:var(--muted)">But is it fraud? Or just a shipping surcharge? That's the hard question.</span>
+  </div>
+
+  <div class="grid-3" style="margin-top:32px;">
+    <div class="metric">
+      <div class="metric-val" style="color:var(--rose)">$XT</div>
+      <div class="metric-label">Annual global P2P spend</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val" style="color:var(--amber)">~5%</div>
+      <div class="metric-label">Lost to fraud & errors</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val" style="color:var(--cyan)">80%</div>
+      <div class="metric-label">False positive rate in typical systems</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:24px;">
+    <p style="font-size:14px;">Every organization that buys anything runs this process. An auditor's job is to verify these three documents agree — amounts match, timing makes sense, the vendor is legitimate. When they don't agree, someone has to figure out <em>why</em>.</p>
+    <p style="font-size:14px; margin-top:12px;">The problem isn't catching the obvious mismatches. It's the <strong>80% false positive rate</strong> — auditors drowning in flags that turn out to be benign, while sophisticated fraud slips through the noise.</p>
+    <p style="font-size:14px; margin-top:12px;">I've solved this problem six different ways. Each time I thought I had it figured out, the technology landscape shifted beneath me.</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 1: RULE-BASED ════════════════════ -->
+<section class="era era-rule" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 1</span>
+    <span class="era-year">~2015–2017</span>
+  </div>
+  <h2>Rule-Based Matching</h2>
+  <p class="tagline">If-else logic. Threshold checks. The Excel formulas of enterprise software.</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture</div>
+    <div class="flow">
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">ERP Extract<span class="node-tooltip">SAP/Oracle batch export, nightly ETL</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">SQL Joins<span class="node-tooltip">LEFT JOIN po ON invoice.po_id = po.id</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">IF amt_diff > 2%<br>THEN flag<span class="node-tooltip">Hard-coded thresholds, same for all vendors</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">Exception<br>Report<span class="node-tooltip">CSV dump, 80% false positives</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--muted); color:var(--muted); background:rgba(100,116,139,0.08)">Manual<br>Review 😩<span class="node-tooltip">Auditor reviews each flag by hand</span></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># The entire "intelligence" of the system</span>
+<span class="kw">def</span> <span class="fn">three_way_match</span>(po, receipt, invoice):
+    <span class="kw">if</span> abs(invoice.amount - po.amount) / po.amount > <span class="num">0.02</span>:
+        <span class="kw">return</span> <span class="str">"FLAG: Amount mismatch"</span>
+    <span class="kw">if</span> invoice.date < receipt.date:
+        <span class="kw">return</span> <span class="str">"FLAG: Invoice before receipt"</span>
+    <span class="kw">if</span> invoice.vendor_id != po.vendor_id:
+        <span class="kw">return</span> <span class="str">"FLAG: Vendor mismatch"</span>
+    <span class="kw">return</span> <span class="str">"PASS"</span>
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-color: rgba(52,211,153,0.3);">
+      <div class="card-title" style="color:var(--emerald)">✓ What worked</div>
+      <p style="font-size:13px; color:var(--muted)">Simple, auditable, explainable to regulators. Runs in milliseconds. Every auditor understands it.</p>
+    </div>
+    <div class="card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="card-title" style="color:var(--rose)">✗ What broke</div>
+      <p style="font-size:13px; color:var(--muted)">80% false positives. Misses temporal patterns entirely. Gradual fraud flies under every threshold. Zero learning — same mistakes forever.</p>
+    </div>
+  </div>
+
+  <div class="invalidation">
+    <div class="emoji">🔄</div>
+    <h3>What Invalidated This</h3>
+    <p>Data volumes grew 10x. The false positive flood was unsustainable. I started asking: "Can a model <em>learn</em> what's normal instead of me coding every rule?"</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 2: MACHINE LEARNING ════════════════════ -->
+<section class="era era-ml" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 2</span>
+    <span class="era-year">~2018–2022</span>
+  </div>
+  <h2>Machine Learning</h2>
+  <p class="tagline">Regression, classification, clustering. Feature engineering. The world of scikit-learn and XGBoost.</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture</div>
+    <div class="flow">
+      <div class="flow-node" style="border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,0.08)">ERP Data<span class="node-tooltip">Structured tables: amounts, dates, vendors</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,0.08)">Feature<br>Engineering<span class="node-tooltip">Hand-crafted: amt_diff, lead_time, vendor_stats</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--violet); color:var(--violet); background:rgba(167,139,250,0.08)">Train/Test<br>Split<span class="node-tooltip">80/20 stratified, expensive labeled data</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,0.08)">XGBoost /<br>Random Forest<span class="node-tooltip">Gradient boosting with scale_pos_weight=10</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Fraud<br>Score<span class="node-tooltip">Probability 0→1, threshold at 0.5</span></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># Now I'm thinking in features and models</span>
+features = [
+    <span class="str">'amt_diff_pct'</span>,      <span class="cm"># Amount deviation</span>
+    <span class="str">'days_po_to_gr'</span>,      <span class="cm"># Lead time</span>
+    <span class="str">'days_gr_to_inv'</span>,     <span class="cm"># Invoice delay</span>
+    <span class="str">'vendor_avg_amount'</span>,  <span class="cm"># Vendor baseline</span>
+    <span class="str">'vendor_txn_count'</span>,   <span class="cm"># Activity level</span>
+    <span class="str">'is_round_amount'</span>,    <span class="cm"># Kickback signal</span>
+]
+
+model = XGBClassifier(scale_pos_weight=<span class="num">10</span>)
+model.<span class="fn">fit</span>(X_train, y_train)
+<span class="cm"># F1: ~0.72  |  False Positive Rate: ~12%</span>
+  </div>
+
+  <div class="thought">
+    The mental model shifted from "coding rules" to "curating training data." I spent more time labeling historical fraud cases than writing code. The model learned patterns I never would have programmed — vendor seasonality, day-of-week effects, amount clustering.
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-color: rgba(52,211,153,0.3);">
+      <div class="card-title" style="color:var(--emerald)">✓ What worked</div>
+      <p style="font-size:13px; color:var(--muted)">Learned patterns from data. FP rate dropped from 80% to ~12%. Could detect gradual inflation, vendor anomalies. Feature importance gave some explainability.</p>
+    </div>
+    <div class="card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="card-title" style="color:var(--rose)">✗ What broke</div>
+      <p style="font-size:13px; color:var(--muted)">Needed massive labeled datasets (expensive). Feature engineering was manual and brittle. Couldn't read actual documents — just structured ERP data. New fraud patterns required retraining.</p>
+    </div>
+  </div>
+
+  <div class="invalidation">
+    <div class="emoji">🔄</div>
+    <h3>What Invalidated This</h3>
+    <p>GPT-3 arrived. Then ChatGPT. Suddenly models could <em>understand text</em> — read PO descriptions, parse invoice notes, reason about context. My carefully engineered features felt primitive.</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 3: TEXT LLM ════════════════════ -->
+<section class="era era-llm" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 3</span>
+    <span class="era-year">~2023</span>
+  </div>
+  <h2>Text-Based LLMs</h2>
+  <p class="tagline">Now it's software engineering — queues, rate limits, prompt chains. The solution became an API orchestration problem.</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture — suddenly, it's a distributed system</div>
+    <div class="flow">
+      <div class="flow-node" style="border-color:var(--violet); color:var(--violet); background:rgba(167,139,250,0.08)">ERP Data +<br>Doc Text<span class="node-tooltip">OCR + Tesseract to extract invoice text</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">Redis<br>Queue<span class="node-tooltip">Buffer for rate limiting: 60 RPM max</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--orange); color:var(--orange); background:rgba(251,146,60,0.08)">Celery<br>Workers<span class="node-tooltip">4 workers, exponential backoff on 429s</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--violet); color:var(--violet); background:rgba(167,139,250,0.12)">LLM API<br><span style="font-size:10px">RPM/TPM<br>throttled</span><span class="node-tooltip">GPT-4: ~$0.03/txn, 3s latency</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Structured<br>Output<span class="node-tooltip">JSON schema validation, retry on malformed</span></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># My code went from ML to infrastructure</span>
+<span class="kw">@celery_app.task</span>(rate_limit=<span class="str">'60/m'</span>)  <span class="cm"># Stay within RPM limits</span>
+<span class="kw">def</span> <span class="fn">analyze_transaction</span>(txn_data):
+    prompt = <span class="str">f"""Analyze this 3-way match:
+    PO: {txn_data['po']}
+    Receipt: {txn_data['receipt']}
+    Invoice: {txn_data['invoice']}
+
+    Is this fraudulent? Explain your reasoning."""</span>
+
+    response = openai.chat.completions.<span class="fn">create</span>(
+        model=<span class="str">"gpt-4"</span>,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}],
+        temperature=<span class="num">0</span>,
+    )
+    <span class="kw">return</span> <span class="fn">parse_response</span>(response)
+  </div>
+
+  <div class="thought">
+    The irony hit me: I was now spending more time on Celery configuration, Redis connection pooling, and rate limit backoff strategies than on the actual fraud detection logic. The "intelligence" was an API call. My job became plumbing.
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-color: rgba(52,211,153,0.3);">
+      <div class="card-title" style="color:var(--emerald)">✓ What worked</div>
+      <p style="font-size:13px; color:var(--muted)">Could read and reason about text — PO descriptions, vendor notes, invoice line items. Zero-shot learning meant no training data needed. Explanations were human-readable.</p>
+    </div>
+    <div class="card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="card-title" style="color:var(--rose)">✗ What broke</div>
+      <p style="font-size:13px; color:var(--muted)">Slow (seconds per transaction). Expensive at scale. Couldn't see scanned documents — just extracted text. Hallucinations in edge cases. RPM/TPM limits forced complex queuing infrastructure.</p>
+    </div>
+  </div>
+
+  <div class="invalidation">
+    <div class="emoji">🔄</div>
+    <h3>What Invalidated This</h3>
+    <p>GPT-4V launched. Claude got vision. Gemini was multimodal from day one. Suddenly the model could <em>look at</em> the actual invoice PDF. My text extraction pipeline became dead weight.</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 4: MULTIMODAL LLM ════════════════════ -->
+<section class="era era-multi" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 4</span>
+    <span class="era-year">~2024</span>
+  </div>
+  <h2>Multimodal LLMs</h2>
+  <p class="tagline">Vision + text in one model. The invoice PDF IS the input. No OCR, no text extraction, no pipeline.</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture — dramatically simpler</div>
+    <div class="flow">
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">PO PDF 📄</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Receipt 📦</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Invoice 🧾</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.12)">Multimodal<br>LLM 👁️</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Verdict +<br>Evidence</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># The entire OCR pipeline? Deleted.</span>
+<span class="kw">def</span> <span class="fn">match_documents</span>(po_pdf, receipt_pdf, invoice_pdf):
+    response = client.messages.<span class="fn">create</span>(
+        model=<span class="str">"claude-sonnet-4-5-20250929"</span>,
+        messages=[{
+            <span class="str">"role"</span>: <span class="str">"user"</span>,
+            <span class="str">"content"</span>: [
+                {<span class="str">"type"</span>: <span class="str">"image"</span>, <span class="str">"source"</span>: po_pdf},
+                {<span class="str">"type"</span>: <span class="str">"image"</span>, <span class="str">"source"</span>: receipt_pdf},
+                {<span class="str">"type"</span>: <span class="str">"image"</span>, <span class="str">"source"</span>: invoice_pdf},
+                {<span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"text"</span>: <span class="str">"Compare these three documents..."</span>}
+            ]
+        }]
+    )
+  </div>
+
+  <div class="thought">
+    The transformation was jarring. I deleted 2,000 lines of OCR code, Tesseract configs, and text extraction logic in a single afternoon. The model could spot things OCR never could — stamp placements, signature anomalies, formatting inconsistencies that hinted at document forgery.
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-color: rgba(52,211,153,0.3);">
+      <div class="card-title" style="color:var(--emerald)">✓ What worked</div>
+      <p style="font-size:13px; color:var(--muted)">Direct document understanding. Caught visual anomalies (altered logos, font changes, suspicious stamps). Dramatically simpler architecture. Could process any document format.</p>
+    </div>
+    <div class="card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="card-title" style="color:var(--rose)">✗ What broke</div>
+      <p style="font-size:13px; color:var(--muted)">Even slower (images are expensive tokens). Still single-shot analysis — no persistent memory of vendor history. Couldn't maintain state across thousands of transactions. No real-time capability.</p>
+    </div>
+  </div>
+
+  <div class="invalidation">
+    <div class="emoji">🔄</div>
+    <h3>What Invalidated This</h3>
+    <p>Reasoning models arrived — o1, Claude with extended thinking. They didn't just see the documents; they could <em>reason through multi-step verification</em>, use tools, and coordinate sub-tasks. My single-prompt approach became... quaint.</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 5: REASONING + AGENTS ════════════════════ -->
+<section class="era era-reason" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 5</span>
+    <span class="era-year">~2025</span>
+  </div>
+  <h2>Reasoning Models + Agents</h2>
+  <p class="tagline">Tool use, sub-agents, chain-of-thought verification. The model doesn't just answer — it investigates.</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture — an agent orchestration system</div>
+    <div class="flow" style="flex-wrap: wrap;">
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Orchestrator<br>Agent 🧠</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">Doc Reader<br>Sub-Agent</div>
+      <div class="flow-node" style="border-color:var(--cyan); color:var(--cyan); background:rgba(34,211,238,0.08)">Vendor Check<br>Sub-Agent</div>
+      <div class="flow-node" style="border-color:var(--violet); color:var(--violet); background:rgba(167,139,250,0.08)">Amount Verify<br>Sub-Agent</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Timeline<br>Sub-Agent</div>
+    </div>
+    <div class="flow" style="margin-top: 8px;">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Tool: ERP Query</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Tool: Vendor DB</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Tool: Calculator</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Tool: Web Search</div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># Now I'm orchestrating agents, not calling APIs</span>
+orchestrator = Agent(
+    model=<span class="str">"claude-opus-4"</span>,
+    tools=[erp_query, vendor_db, calculator, web_search],
+    sub_agents=[
+        Agent(name=<span class="str">"doc_reader"</span>, <span class="cm"># reads & extracts</span>),
+        Agent(name=<span class="str">"vendor_checker"</span>, <span class="cm"># validates vendor history</span>),
+        Agent(name=<span class="str">"amount_verifier"</span>, <span class="cm"># cross-checks amounts</span>),
+        Agent(name=<span class="str">"timeline_analyst"</span>, <span class="cm"># checks temporal logic</span>),
+    ]
+)
+<span class="cm"># The agent THINKS, then delegates, then synthesizes</span>
+result = orchestrator.<span class="fn">run</span>(<span class="str">"Investigate this transaction..."</span>)
+  </div>
+
+  <div class="thought">
+    And then I saw the Kimi K2 paper. Agent swarm patterns <em>within the model itself</em> — not orchestrated by my code, but emerging from the model's architecture. My hand-crafted sub-agent topology was already becoming an artifact of a brief window where we had to build the scaffolding ourselves.
+  </div>
+
+  <div class="grid-2">
+    <div class="card" style="border-color: rgba(52,211,153,0.3);">
+      <div class="card-title" style="color:var(--emerald)">✓ What worked</div>
+      <p style="font-size:13px; color:var(--muted)">Deep investigation capability. Each sub-agent specializes. Can query external systems, reason multi-step, and explain its chain of thought. Catches complex schemes.</p>
+    </div>
+    <div class="card" style="border-color: rgba(251,113,133,0.3);">
+      <div class="card-title" style="color:var(--rose)">✗ What broke</div>
+      <p style="font-size:13px; color:var(--muted)">Extremely slow (minutes per investigation). Expensive. Non-deterministic. Agent orchestration is fragile. Not suitable for real-time, continuous monitoring. Can't process 10,000 transactions/day economically.</p>
+    </div>
+  </div>
+
+  <div class="invalidation">
+    <div class="emoji">🔄</div>
+    <h3>The Question That Changed Everything</h3>
+    <p>What if the computation itself was <em>temporal</em>? What if instead of batch-processing documents, the system was always-on — processing events as they happen, building memory, learning in real-time, consuming near-zero power between events? That's when I discovered neuromorphic computing.</p>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ ERA 6: NEUROMORPHIC ════════════════════ -->
+<section class="era era-neuro" data-era>
+  <div class="era-header">
+    <span class="era-num">Era 6</span>
+    <span class="era-year">~2026+</span>
+  </div>
+  <h2>Neuromorphic Computing</h2>
+  <p class="tagline">The brain doesn't batch-process. It's event-driven, always-on, and builds temporal context continuously. What if fraud detection worked the same way?</p>
+
+  <div class="arch">
+    <div class="arch-label">Architecture — event-driven, always-on, temporal</div>
+    <div class="flow">
+      <div class="flow-node" style="border-color:var(--pink); color:var(--pink); background:rgba(244,114,182,0.08)">ERP Events<br><span style="font-size:10px">continuous stream</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--amber); color:var(--amber); background:rgba(251,191,36,0.08)">Spike<br>Encoder<br><span style="font-size:10px">8 channels</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--violet); color:var(--violet); background:rgba(167,139,250,0.12)">Spiking<br>Neural Net<br><span style="font-size:10px">temporal memory</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--rose); color:var(--rose); background:rgba(251,113,133,0.08)">Anomaly<br>Detection<br><span style="font-size:10px">real-time</span></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" style="border-color:var(--emerald); color:var(--emerald); background:rgba(52,211,153,0.08)">Explainable<br>Dashboard<br><span style="font-size:10px">spike patterns</span></div>
+    </div>
+  </div>
+
+  <div class="code-block">
+<span class="cm"># The fundamental shift: TIME is a first-class citizen</span>
+<span class="cm"># Each financial event becomes a spike in a temporal stream</span>
+
+<span class="cm"># Channel 0: PO creation spike      (when)</span>
+<span class="cm"># Channel 1: Goods receipt spike     (when)</span>
+<span class="cm"># Channel 2: Invoice spike           (when)</span>
+<span class="cm"># Channel 3: PO→GR delay deviation   (how different from normal)</span>
+<span class="cm"># Channel 4: GR→Inv delay deviation  (MAX if invoice before receipt!)</span>
+<span class="cm"># Channel 5: Amount deviation         (how far from vendor baseline)</span>
+<span class="cm"># Channel 6: Invoice/PO ratio         (mismatch magnitude)</span>
+<span class="cm"># Channel 7: Vendor activity burst    (sudden activity spike)</span>
+
+<span class="cm"># The SNN learns the "rhythm" of normal transactions</span>
+<span class="cm"># Fraud = abnormal temporal patterns</span>
+model = FraudSNN()  <span class="cm"># 8→64→32→2, recurrent LIF neurons</span>
+<span class="cm"># Trains in 46 seconds. Runs continuously. Near-zero idle power.</span>
+  </div>
+
+  <div class="card" style="border-color: rgba(244,114,182,0.3); margin-top:24px;">
+    <div class="card-title" style="color:var(--pink)">Why This Is Different</div>
+    <p style="font-size:14px; margin-bottom:12px;">Every previous approach processed transactions as <strong>isolated snapshots</strong>. The neuromorphic approach treats the entire procure-to-pay lifecycle as a <strong>temporal stream</strong>. The SNN builds an internal model of each vendor's "rhythm" and fires when something breaks the pattern.</p>
+    <p style="font-size:14px;">Gradual inflation over months? The membrane potential slowly builds. Phantom vendor with no baseline? Maximum firing from day one. Invoice before receipt? The temporal ordering of spikes is literally reversed — the network detects this natively.</p>
+  </div>
+
+  <div class="grid-3" style="margin-top:24px;">
+    <div class="metric">
+      <div class="metric-val" style="color:var(--pink)">F1: 0.77</div>
+      <div class="metric-label">vs Rule-Based 0.68</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val" style="color:var(--emerald)">1.5%</div>
+      <div class="metric-label">False positive rate</div>
+    </div>
+    <div class="metric">
+      <div class="metric-val" style="color:var(--cyan)">46s</div>
+      <div class="metric-label">Full pipeline training</div>
+    </div>
+  </div>
+</section>
+
+<div class="timeline-line"></div>
+
+<!-- ════════════════════ COMPARISON ════════════════════ -->
+<section class="era visible" data-era style="padding-top:80px;">
+  <h2 style="color:var(--text); margin-bottom:24px;">Six Eras, One Problem</h2>
+
+  <div style="overflow-x:auto;">
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th>Era</th>
+        <th>Approach</th>
+        <th>Speed</th>
+        <th>My Role</th>
+        <th>Killed By</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="color:var(--amber)">1. Rules</td>
+        <td>IF-ELSE thresholds</td>
+        <td>⚡ ms</td>
+        <td>Domain expert</td>
+        <td>Data volume</td>
+      </tr>
+      <tr>
+        <td style="color:var(--cyan)">2. ML</td>
+        <td>XGBoost / Random Forest</td>
+        <td>⚡ ms</td>
+        <td>Feature engineer</td>
+        <td>LLMs understanding text</td>
+      </tr>
+      <tr>
+        <td style="color:var(--violet)">3. Text LLM</td>
+        <td>GPT-4 + Celery queues</td>
+        <td>🐌 seconds</td>
+        <td>Infrastructure engineer</td>
+        <td>Vision capabilities</td>
+      </tr>
+      <tr>
+        <td style="color:var(--emerald)">4. Multimodal</td>
+        <td>Claude Vision + docs</td>
+        <td>🐌 seconds</td>
+        <td>Prompt engineer</td>
+        <td>Reasoning + agents</td>
+      </tr>
+      <tr>
+        <td style="color:var(--rose)">5. Reasoning</td>
+        <td>Agent swarms + tools</td>
+        <td>🐢 minutes</td>
+        <td>Agent architect</td>
+        <td>In-model agents (Kimi K2)</td>
+      </tr>
+      <tr>
+        <td style="color:var(--pink)">6. Neuromorphic</td>
+        <td>Spiking Neural Networks</td>
+        <td>⚡ µs</td>
+        <td>Temporal architect</td>
+        <td>TBD... 🤔</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="thought" style="margin-top:32px;">
+    The pattern is clear: every 12-18 months, a capability emerges that doesn't just improve the previous solution — it <em>invalidates the architecture</em>. The question isn't whether the next wave will come. It's whether you'll recognize it fast enough to ride it instead of being swept away.
+  </div>
+</section>
+
+<!-- ════════════════════ CLOSING ════════════════════ -->
+<section class="era visible" data-era style="padding-top:40px; padding-bottom:80px;">
+  <h2 style="color:var(--text); margin-bottom:24px;">The Real Lesson</h2>
+
+  <div class="card" style="border-color: rgba(34,211,238,0.3); padding:28px;">
+    <p style="font-size:16px; line-height:1.8; margin-bottom:16px;">
+      The technology you master today will be a footnote in 18 months. That's not a threat — it's a liberation. <strong>Stop optimizing for the current paradigm and start building the muscle to recognize paradigm shifts.</strong>
+    </p>
+    <p style="font-size:16px; line-height:1.8; margin-bottom:16px;">
+      When text LLMs emerged, the winners weren't the best ML engineers — they were the ones who realized the game had changed. When vision arrived, the winners weren't the best prompt engineers — they were the ones who deleted their OCR pipelines without hesitation.
+    </p>
+    <p style="font-size:16px; line-height:1.8;">
+      Right now, neuromorphic computing is where deep learning was in 2015 — early, impractical for most, but carrying a signal about the future. The question for you isn't "should I learn snnTorch." It's: <span style="color:var(--cyan); font-weight:600;">"What architectural assumption am I making today that will be invalidated by a capability I haven't imagined yet?"</span>
+    </p>
+  </div>
+
+  <div style="text-align:center; margin-top:48px;">
+    <p style="color:var(--muted); font-size:13px; margin-bottom:8px;">Try the full neuromorphic 3-way matching engine yourself:</p>
+    <a href="https://github.com/meghahonna/3waymatch" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:6px; border:1px solid var(--cyan); color:var(--cyan); text-decoration:none; font-size:14px; font-weight:500; transition: all 0.2s;">
+      github.com/meghahonna/3waymatch →
+    </a>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  Built for MakeMIT × Harvard 2026 — The Evolution of 3-Way Matching
+</footer>
+
+<script>
+// ──── Neural network background ────
+const canvas = document.getElementById('neural-bg');
+const ctx = canvas.getContext('2d');
+let nodes = [];
+let animId;
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function init() {
+  resize();
+  const count = Math.min(Math.floor((canvas.width * canvas.height) / 20000), 60);
+  nodes = Array.from({length: count}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    r: Math.random() * 1.5 + 0.5,
+    pulse: Math.random() * Math.PI * 2,
+    speed: Math.random() * 0.015 + 0.005,
+  }));
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  nodes.forEach(n => {
+    n.x += n.vx; n.y += n.vy; n.pulse += n.speed;
+    if (n.x < 0 || n.x > canvas.width) n.vx *= -1;
+    if (n.y < 0 || n.y > canvas.height) n.vy *= -1;
+  });
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 120) {
+        ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y);
+        ctx.strokeStyle = `rgba(34,211,238,${(1-dist/120)*0.1})`; ctx.lineWidth = 0.5; ctx.stroke();
+      }
+    }
+  }
+  nodes.forEach(n => {
+    const glow = (Math.sin(n.pulse)+1)/2;
+    ctx.beginPath(); ctx.arc(n.x, n.y, n.r + glow*1.5, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(34,211,238,${0.2+glow*0.4})`; ctx.fill();
+  });
+  animId = requestAnimationFrame(draw);
+}
+
+init(); draw();
+window.addEventListener('resize', init);
+
+// ──── Scroll reveal ────
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('[data-era]').forEach(el => observer.observe(el));
+
+// ──── Era progress bar + navigation dots ────
+const eraSections = document.querySelectorAll('.era-rule, .era-ml, .era-llm, .era-multi, .era-reason, .era-neuro');
+const progressBar = document.querySelector('.era-progress');
+const progressFill = document.querySelector('.era-progress-fill');
+const eraNav = document.querySelector('.era-nav');
+const eraDots = document.querySelectorAll('.era-dot');
+
+eraDots.forEach(dot => {
+  dot.addEventListener('click', () => {
+    const idx = parseInt(dot.dataset.eraIdx);
+    if (eraSections[idx]) eraSections[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+});
+
+window.addEventListener('scroll', () => {
+  const scrollY = window.scrollY;
+  const docH = document.documentElement.scrollHeight - window.innerHeight;
+  const pct = Math.min(scrollY / docH * 100, 100);
+  const show = scrollY > window.innerHeight * 0.5;
+
+  progressBar.classList.toggle('visible', show);
+  eraNav.classList.toggle('visible', show);
+  progressFill.style.width = pct + '%';
+
+  // Highlight active era dot
+  let activeIdx = -1;
+  eraSections.forEach((sec, i) => {
+    const rect = sec.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.5 && rect.bottom > 0) activeIdx = i;
+  });
+  eraDots.forEach((d, i) => d.classList.toggle('active', i === activeIdx));
+});
+
+// ──── Animated counters ────
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting || e.target.dataset.counted) return;
+    e.target.dataset.counted = 'true';
+    const text = e.target.textContent;
+    const match = text.match(/([\d.]+)/);
+    if (!match) return;
+    const target = parseFloat(match[1]);
+    const prefix = text.slice(0, text.indexOf(match[1]));
+    const suffix = text.slice(text.indexOf(match[1]) + match[1].length);
+    const isInt = !match[1].includes('.');
+    const decimals = isInt ? 0 : (match[1].split('.')[1] || '').length;
+    const duration = 1200;
+    const start = performance.now();
+    function tick(now) {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = target * eased;
+      e.target.textContent = prefix + current.toFixed(decimals) + suffix;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.metric-val').forEach(el => counterObserver.observe(el));
+
+// ──── Code block copy buttons ────
+document.querySelectorAll('.code-block').forEach(block => {
+  const btn = document.createElement('button');
+  btn.className = 'code-copy';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', () => {
+    const text = block.textContent.replace('Copy', '').replace('Copied!', '').trim();
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+  });
+  block.appendChild(btn);
+});
+
+// ──── Animated data flow particles in architecture diagrams ────
+function addFlowParticles() {
+  document.querySelectorAll('.arch .flow').forEach((flow, fi) => {
+    const arrows = flow.querySelectorAll('.flow-arrow');
+    const colors = ['var(--amber)','var(--cyan)','var(--violet)','var(--emerald)','var(--rose)','var(--pink)'];
+    const color = colors[fi % colors.length];
+    arrows.forEach((arrow, i) => {
+      arrow.style.position = 'relative';
+      arrow.style.overflow = 'visible';
+      const particle = document.createElement('span');
+      particle.className = 'flow-particle';
+      particle.style.background = color;
+      particle.style.animationDelay = (i * 0.4) + 's';
+      particle.style.boxShadow = `0 0 6px ${color}`;
+      arrow.appendChild(particle);
+    });
+  });
+}
+addFlowParticles();
+</script>
+
+</body>
+</html>
